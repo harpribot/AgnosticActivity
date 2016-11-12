@@ -1,14 +1,10 @@
 # Folder Descriptions
 
-* imsitu --> raw imsitu images
-	* images_info: .txt files of filenames for train/dev/test split
-	* label_map: contains the dictionary pickle that maps all the activities to actions #No need for this folder. We're both using alphabetical ordering	
-	* object_labels: object labels for imsitu
-	* lmdb_text --> Contains the image label pair .txt files that will be used by caffe to create the lmdb files
+NOTE - @Tushar - Can you put imsitu and imsitu_subset in your hdf5 directory. I have taken the .txt file. Rest can just go in your directory. 
 
-* ppmi --> raw ppmi images
+In this directory there can be 3 folders:
+* Images - raw images
+* hdf5 - hdf5 for torch
+* LMDB - lmdb for caffe
 
-* imsitu_selections --> The directory in which we will store all the codes of the curated imsitu test set (the one which had originally 1034 images)
-
-* hdf5 --> directory with hdf5 files of all datasets (imsitu/ppmi/imsitu_selections) and scripts to generate them
 
