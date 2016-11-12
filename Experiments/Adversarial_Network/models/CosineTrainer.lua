@@ -22,9 +22,9 @@ end
 
 
 ---------------------------------------------------------------------
-local AdversaryTrainer = torch.class('AdversaryTrainer')
+local CosineTrainer = torch.class('CosineTrainer')
 
-function AdversaryTrainer:__init(params)
+function CosineTrainer:__init(params)
 	
 	self.params=params
 	self.epoch=1
@@ -37,23 +37,12 @@ function AdversaryTrainer:__init(params)
 		self.params.cv_dir=params.cv_dir -- save models to new cv_dir
 	end
 
-	self.crit=nn.ParallelCriterion()
-				:add(nn.ClassNLLCriterion(),1) -- activity branch
-				:add(nn.BCECriterion(),100) -- object branch
-
-	-- val crit is only on activity labels
-	self.val_crit=nn.ParallelCriterion()
-				:add(nn.ClassNLLCriterion(),1)
-				:add(nn.BCECriterion(),0)
-
-	-- mask for NLL
-	--self.crit=nn.MaskZeroCriterion(self.crit, 1)
-	--self.val_crit=nn.MaskZeroCriterion(self.val_crit, 1)
-	
+	self.crit= nn.ParallelCriterion()
+			:add(nn.ClassNLLCriterion(), 1)
+			:add(nn.CosineEmbeddingCriterion(0.5), 0)
 
 	self.model:cuda()
 	self.crit:cuda()
-	self.val_crit:cuda()
 
 	self.sgdState = {
 		learningRate  = params.base_lr,
@@ -67,19 +56,7 @@ function AdversaryTrainer:__init(params)
 
 end
 
-function make_mask(labels, output)
-	
-	-- for BCE
-	local mask=torch.repeatTensor(1-torch.eq(labels:sum(2),0),1,output:size(2)):cuda()
-	
-	-- for NLL
-	--local mask=torch.repeatTensor(torch.gt(labels,0),output:size(2), 1):transpose(1,2):cuda()
-
-	return mask
-end
-	
-
-function AdversaryTrainer:trainBatch(batchInputs, batchLabels, base_lr, base_wd)
+function CosineTrainer:trainBatch(batchInputs, batchLabels, base_lr, base_wd)
 	
 	-- get layer-wise lr and update optim_state
 	local base_lr= base_lr or self.params.base_lr
@@ -92,51 +69,49 @@ function AdversaryTrainer:trainBatch(batchInputs, batchLabels, base_lr, base_wd)
 
 	-- copy data to gpu
 	batchInputs, batchLabels= cudafy(batchInputs), cudafy(batchLabels)
+	batchLabels= batchLabels[1] -- ditch object labels
 
 	--collectgarbage(); collectgarbage();
 	self.model:training()
 	self.gradients:zero()
 	local y = self.model:forward(batchInputs)
-
-	
-	-- mask object predictions to prevent learning
-	local mask=make_mask(batchLabels[2], y[2])
-	y[2]=torch.cmul(y[2],mask)
+	local cos_labels=torch.zeros(batchLabels:size(1)):fill(-1):cuda() --make everything go far away
 
 	-- calculate loss normally
-	local loss_val = self.crit:forward(y, batchLabels)
-	local df_dw = self.crit:backward(y, batchLabels)
-	self.model:backward(batchInputs, df_dw)
+	local loss_val = self.crit:forward({y[1], {y[2], y[3]}}, {batchLabels, cos_labels})
+	local nll_loss= self.crit.criterions[1].output
+	local cos_loss= self.crit.criterions[2].output*20
+
+	local df_dw = self.crit:backward({y[1], {y[2], y[3]}}, {batchLabels, cos_labels})
+	self.model:backward(batchInputs, {df_dw[1], unpack(df_dw[2])})
 
 	optim.sgd(function()
 		return loss_val, self.gradients
 		end,
 		self.weights,
 		self.sgdState)
-	return loss_val
+	return {loss_val, nll_loss, cos_loss}
 end
 
-function AdversaryTrainer:predict(input, target)
+function CosineTrainer:predict(input, target)
 	self.model:evaluate()
 
-	local output = self.model:forward(cudafy(input))
+
+	input, target= cudafy(input), cudafy(target)
+	target=target[1] -- ditch object labels
+
+	local output = self.model:forward(input)
+	local cos_labels=torch.zeros(target:size(1)):fill(-1):cuda() --make everything go far away
 
 	local loss=-1
 	if target~=nil then
-		local mask=make_mask(target[2], output[2])
-		output[2]=torch.cmul(output[2],mask)
-		loss= self.val_crit:forward(output, cudafy(target))
+		loss= self.crit:forward({output[1], {output[2], output[3]}}, {target, cos_labels})
 	end
 	
-	if torch.type(output)=='table' then
-		return {output[1]:float(), loss}
-	end
-
-	return {output:float(), loss}
-	
+	return {output[1]:float(), loss}
 end
 
-function AdversaryTrainer:save(epoch, loss)
+function CosineTrainer:save(epoch, loss)
 	
 	local checkpoint={}
 	checkpoint.loss=loss
@@ -151,7 +126,7 @@ function AdversaryTrainer:save(epoch, loss)
 end
 
 
-function AdversaryTrainer:load(filename)
+function CosineTrainer:load(filename)
 
 	local checkpoint=torch.load(filename)
 	self.model=checkpoint.model
@@ -161,8 +136,8 @@ function AdversaryTrainer:load(filename)
 	
 end
 
-function AdversaryTrainer:set_grl_lambda(lambda)
-	self.model.modules[4].modules[1].lambda= lambda
+function CosineTrainer:set_grl_lambda(lambda)
+	-- dummy function so train doesn't break
 end
 
 
@@ -175,24 +150,16 @@ function set_lr(module, factor)
 	end
 end
 
-function AdversaryTrainer:reset_lr_mults()
-	set_lr(self.model.modules[4].modules[2], 1) -- obj lin
-	set_lr(self.model.modules[3].modules[1], 1) -- act lin 1
-	set_lr(self.model.modules[3].modules[4], 1) -- act lin 2
+function CosineTrainer:reset_lr_mults()
+	-- dummy function so train doesn't break
 end
 
-function AdversaryTrainer:set_lr_mults()
-	-- increase the learning rate for new layers
-	set_lr(self.model.modules[4].modules[2], 10) -- 10x lr_mult
-	set_lr(self.model.modules[3].modules[1], 10) -- 10x lr_mult
-	set_lr(self.model.modules[3].modules[4], 10) -- 10x lr_mult
+function CosineTrainer:set_lr_mults()
+	-- dummy function so train doesn't break
 end
 
-function AdversaryTrainer:get_reps()
-	-- get activity activations after ReLU from feature branch
-	local activations= self.model.modules[2].modules[21].output
-	activations=activations:float()
-	return activations
+function CosineTrainer:get_reps()
+	-- dummy function so train doesn't break
 end
 
 

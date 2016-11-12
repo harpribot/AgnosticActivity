@@ -25,15 +25,6 @@ function load_alexnet()
 	return model
 end
 
-function set_lr(module, factor)
-	if module.weight~=nil then
-		module:learningRate('weight', factor)
-			:learningRate('bias', factor)
-			:weightDecay('weight', factor)
-			:weightDecay('bias', factor)
-	end
-end
-
 function build_model(params) --requires (b,3,227,227) input
 
 	local SpatialConvolution = cudnn.SpatialConvolution
@@ -58,14 +49,8 @@ function build_model(params) --requires (b,3,227,227) input
 		:add(nn.Linear(4096, 1024))
 		:add(ReLU())
 		:add(nn.Dropout(0.5))
-		:add(nn.Linear(1024, 504))
+		:add(nn.Linear(1024, params.num_acts))
 		:add(cudnn.LogSoftMax())
-
-	-- increase the learning rate for new layers
-	set_lr(object_branch.modules[2], 10) -- 10x lr_mult
-	set_lr(activity_branch.modules[1], 10) -- 10x lr_mult
-	set_lr(activity_branch.modules[4], 10) -- 10x lr_mult
-	
 
 	-- connect the two branches at the bottleneck
 	local input=nn.Identity()()

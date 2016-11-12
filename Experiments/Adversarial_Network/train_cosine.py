@@ -20,7 +20,7 @@ parser.add_argument('--save_every', type=int, default=1)
 parser.add_argument('--cv_dir', default='cv/tmp/')
 parser.add_argument('--load', default='nil')
 parser.add_argument('--log', default='')
-parser.add_argument('--model', default='%s/adversary'%model_dir)
+parser.add_argument('--model', default='%s/cosine'%model_dir)
 parser.add_argument('--grl_lambda', type=float, default=1.0)
 #optimization
 parser.add_argument('--base_wd', type=float, default=1e-4)
@@ -34,15 +34,18 @@ if len(opt.log)>0:
 
 #----------------------------------------------------------------#
 
+def unpack(table):
+	return [table[idx] for idx in range(1, len(table.keys())+1)]
 
 def log_data(data, trainval):
 	if len(opt.log)==0:
 		return
 
 	if trainval=='train':
-		epoch, batch_frac, loss= data
+		epoch, batch_frac, loss_stats= data
+		loss, nll_loss, cos_loss= loss_stats
 		with open(opt.log+'.train','a') as f:
-			f.write('%d,%f,%f\n'%(epoch, batch_frac, loss))
+			f.write('%d,%f,%f,%f,%f\n'%(epoch, batch_frac, loss, nll_loss, cos_loss))
 		return
 
 	if trainval=='val':
@@ -102,8 +105,7 @@ def epochToLearningRate(epoch):
 train_images, train_labels, val_images, val_labels, img_mean = load_data(opt.data_dir)
 opt.img_mean=img_mean
 
-TorchTrainer = PyTorchHelpers.load_lua_class('%s/AdversaryTrainer.lua'%model_dir, 'AdversaryTrainer')
-#TorchTrainer = PyTorchHelpers.load_lua_class('%s/CosineTrainer.lua'%model_dir, 'CosineTrainer')
+TorchTrainer = PyTorchHelpers.load_lua_class('%s/CosineTrainer.lua'%model_dir, 'CosineTrainer')
 net = TorchTrainer(vars(opt))
 
 n_train, n_val= train_images.shape[0], val_images.shape[0]
@@ -112,9 +114,6 @@ n_val_batches= n_val/batch_size
 epoch = net.epoch
 
 # +objs
-net.reset_lr_mults()
-net.set_grl_lambda(opt.grl_lambda)
-
 
 while True:
 
@@ -155,10 +154,13 @@ while True:
 	for b in range(n_train_batches):
 
 		batchInputs, batchLabels=get_random_batch(train_images, train_labels, opt)
-		loss = net.trainBatch(batchInputs, batchLabels, learningRate)
+		loss_stats= net.trainBatch(batchInputs, batchLabels, learningRate)
+		loss, nll_loss, cos_loss=unpack(loss_stats)
+
+
 		if b%opt.print_every==0:
-			print('  epoch: %d | batch: %d/%d | loss: %.6f' %(epoch, b, n_train_batches, loss))
-			log_data([epoch-1, 1.0*b/n_train_batches, loss], 'train')
+			print('  epoch: %d | batch: %d/%d | loss: %.6f | NLL: %.3f | COS: %.3f' %(epoch, b, n_train_batches, loss, nll_loss, cos_loss))
+			log_data([epoch-1, 1.0*b/n_train_batches, [loss, nll_loss, cos_loss]], 'train')
 
 		epochLoss += loss
 

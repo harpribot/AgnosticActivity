@@ -1,18 +1,18 @@
 import h5py
 import numpy as np
-from util.nn_util import *
-from sklearn.metrics import accuracy_score, average_precision_score
+from Adversarial_Network.util.nn_util import *
+from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC
 
 #don't worry, we'll put it back in there
 #model_dir='../../models/adversarial_object_activity'
-model_dir='models'
-data_dir='../../project_data'
+model_dir='Adversarial_Network/models'
+data_dir='../project_data'
 
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--batch_size', type=int, default=100)
-parser.add_argument('--data_dir', default='%s/hdf5/ppmi'%data_dir)
+parser.add_argument('--data_dir', default='%s/hdf5/imsitu'%data_dir)
 parser.add_argument('--t7', default='nil')
 parser.add_argument('--prototxt', default='nil')
 parser.add_argument('--caffemodel', default='nil')
@@ -20,25 +20,64 @@ parser.add_argument('--final_layer', default='fc8') #'fc8_p'/'fc8-new'
 opt = parser.parse_args()
 
 #----------------------------------------------------------------#
-def get_reps(inputs, labels, net):
+num_classes=504
+banner_line='-'*30
+def val_banner(truth, pred):
 
-	output_reps, output_labels=[], []
-	for batchInputs, batchLabels in get_batches_in_sequence_ppmi(inputs, labels, opt):
+	truth=truth-1 # <3 lua
+
+	pred_idx=np.argsort(-pred, 1) #first col is the highest
+	prec_at_k=np.zeros(num_classes)
+	MRR=0.0
+
+	for idx in range(pred_idx.shape[0]):
+		
+		rank=pred_idx[idx].tolist().index(truth[idx])+1
+		MRR+=1.0/rank
+
+		for k in range(num_classes):		
+			top_k=set(pred_idx[idx,:k+1])
+			if truth[idx] in top_k:
+				prec_at_k[k:]+=1
+				break
+	prec_at_k/=pred_idx.shape[0]
+	MAP=np.mean(prec_at_k)
+	MRR/=pred_idx.shape[0]
+
+	acc1, acc5=prec_at_k[0], prec_at_k[4]
+
+	val_banner='p@1=%.3f | p@5=%.3f | MAP=%.3f | MRR=%.3f'\
+			%(acc1, acc5, MAP, MRR)
+	val_banner='%s\n%s\n%s'%(banner_line, val_banner, banner_line)
+	print val_banner
+
+def get_preds(inputs, labels, net):
+
+	output_preds, output_labels=[], []
+	count, n_batches=0, inputs.shape[0]/opt.batch_size
+
+	for batchInputs, batchLabels in get_batches_in_sequence(inputs, labels, opt):
+
+		batchLabels, _ = batchLabels # take only activity
 
 		if opt.backend=='torch':
-			net.predict(batchInputs)
-			batchPred= net.get_reps().asNumpyTensor()
+			batchPred= net.predict(batchInputs)[1] # 2 is loss
+			batchPred= batchPred.asNumpyTensor()
 		elif opt.backend=='caffe':
 			net.blobs['data'].data[...] = batchInputs[:,::-1,:,:]
 			net.forward()
 			batchPred = net.blobs[opt.final_layer].data.copy()
 
-		output_reps.append(batchPred)
+		output_preds.append(batchPred)
 		output_labels.append(batchLabels)
 
-	output_reps=np.vstack(output_reps)
+		if count%10==0:
+			print '%s/%s..'%(count, n_batches)
+		count+=1
+
+	output_preds=np.vstack(output_preds)
 	output_labels=np.hstack(output_labels)	
-	return output_reps, output_labels #keep classes as 1,2
+	return output_preds, output_labels 
 
 
 def torch_net():
@@ -63,24 +102,14 @@ def caffe_net():
 
 def eval_data(net):
 	
-	train_reps, train_labs = get_reps(train_images, train_labels, net)
-	val_reps, val_labs = get_reps(val_images, val_labels, net)
-	print 'representations generated'
+	val_pred, val_labs = get_preds(val_images, val_labels, net)
+	print 'predictions generated'
 	
-	clf = SVC(verbose=True, probability=True)
-	clf.fit(train_reps, train_labs)
-	print 'model fit'
-
-	accuracy=clf.score(val_reps, val_labs)
-	preds=clf.predict_proba(val_reps)
-	AP=average_precision_score(val_labs-1, preds[:,1]) #needs binary, pos class score
-	
-	print 'Accuracy on PPMI:', accuracy
-	print 'AP:', AP
+	val_banner(val_labs, val_pred)
 
 
 #----------------------------------------------------------------#
-train_images, train_labels, val_images, val_labels, img_mean = load_ppmi(opt.data_dir)
+train_images, train_labels, val_images, val_labels, img_mean = load_data(opt.data_dir)
 opt.img_mean=img_mean
 
 
