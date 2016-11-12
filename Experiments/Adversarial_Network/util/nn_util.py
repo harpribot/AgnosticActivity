@@ -32,8 +32,8 @@ def load_ppmi(data_dir):
 
 
 #agnostic imsitu subset
-def load_agnostic(data_dir):
-	val_data=h5py.File('%s/agnostic_data.h5'%data_dir)
+def load_subset(data_dir):
+	val_data=h5py.File('%s/subset_data.h5'%data_dir)
 	val_labels=(val_data['act_labels'], val_data['obj_labels'])
 	img_mean= np.array(val_data['img_mean'])
 	return val_data['images'], val_labels, img_mean
