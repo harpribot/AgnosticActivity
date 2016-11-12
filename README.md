@@ -22,7 +22,7 @@ Thats it. Note that this caffe-sl version is stripped off of unwanted files in t
 All the models are in the models directory.
 
 ## Project data
-All the data is to be kept in the project-data directory and queried from there
+All the data is to be kept in the project-data directory and queried from there.
 
 ## Experiments
 All the experiment scripts should be in Experiments directory and should call the models directory from there.
