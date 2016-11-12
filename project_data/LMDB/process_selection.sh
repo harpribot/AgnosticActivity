@@ -14,7 +14,7 @@ DATA=utils/lmdb_text
 EXAMPLE=imsitu_selection
 TOOLS=../../caffe-sl/build/tools
 
-SELECTION_DATA_ROOT=../images/
+SELECTION_DATA_ROOT=../images/imsitu/
 
 # Set RESIZE=true to resize the images to 256x256. Leave as false if images have
 # already been resized using another tool.
