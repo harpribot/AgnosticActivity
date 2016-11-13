@@ -26,14 +26,36 @@ def val_banner(truth, pred):
 	print val_banner
 
 #####################################################################
-def evaluate_ensemble(baseline_pickle, model1_pickle):
-	label_list, dist_baseline = pickle.load(open(baseline_pickle, 'rb'))
-	_, dist_model1 = pickle.load(open(model1_pickle, 'rb'))
-	print dist_baseline.shape
-	print dist_model1.shape
-	ensemble_dist = (dist_baseline + dist_model1)/2.0
+corrupt_images = ['decomposing_205.jpg',
+'fueling_67.jpg',
+'imitating_110.jpg',
+'knocking_90.jpg',
+'lifting_267.jpg',
+'peeing_138.jpg',
+'tickling_209.jpg',
+'tripping_245.jpg']
 
-	val_banner(label_list, ensemble_dist)
+def evaluate_ensemble(results_mdl_a, results_mdl_b):
+	results_a = pickle.load(open(results_mdl_a, 'rb'))
+	results_b = pickle.load(open(results_mdl_b, 'rb'))
+	dist_mdl_a = []
+	dist_mdl_b = []
+	true_label = []
+	
+	for key, value in results_a.iteritems():
+		label_a, dist_a = value
+		if key not in corrupt_images:
+			true_label.append(label_a)
+                	dist_mdl_a.append(dist_a)
+			label_b, dist_b = results_b[key]
+			assert label_a == label_b, 'The labels are not the same'
+			dist_mdl_b.append(dist_b)
+
+	dist_mdl_a = np.array(dist_mdl_a)
+	dist_mdl_b = np.array(dist_mdl_b) 
+	ensemble_dist = (dist_mdl_a + dist_mdl_b)/2.0
+	true_label = np.array(true_label)
+	val_banner(true_label, ensemble_dist)
 
 
 print 'Loading the baseline and model1 distribution'
@@ -45,12 +67,59 @@ baseline_imsitu_val = '../Exp2-Baseline/imsitu_validation.p'
 baseline_imsitu_test = '../Exp2-Baseline/imsitu_test.p'
 baseline_imsitu_selection = '../Exp2-Baseline/imsitu_selection.p'
 
+model2_imsitu_val = '../Exp4-Adversarial_Model2/imsitu_validation.p'
+model2_imsitu_selection = '../Exp4-Adversarial_Model2/imsitu_selection.p'
+
+baseline_tushar_val = '../baseline_tushar_validation.p'
+baseline_tushar_selection = '../baseline_tushar_selection.p'
+
+print 'Evaluatin for Baseline and Model1...'
+print '.....'
 print 'Evaluating Ensemble for Imsitu Validation'
 evaluate_ensemble(baseline_imsitu_val, model1_imsitu_val)
-
 print 'Evaluating Ensemlbe for Imsitu Test'
 evaluate_ensemble(baseline_imsitu_test, model1_imsitu_test)
-
 print 'Evaluating Ensemble for Imsitu Selection'
 evaluate_ensemble(baseline_imsitu_selection, model1_imsitu_selection)
-	
+
+
+print 'Evaluatin for Model1 and Model2...'
+print '.....'
+print 'Evaluating Ensemble for Imsitu Validation'
+evaluate_ensemble(model1_imsitu_val, model2_imsitu_val)
+#print 'Evaluating Ensemlbe for Imsitu Test'
+#evaluate_ensemble(baseline_imsitu_test, model1_imsitu_test)
+print 'Evaluating Ensemble for Imsitu Selection'
+evaluate_ensemble(model1_imsitu_selection, model2_imsitu_selection)
+
+
+print 'Evaluatin for Basleline Tushar and Model1...'
+print '.....'
+print 'Evaluating Ensemble for Imsitu Validation'
+evaluate_ensemble(baseline_tushar_val, model1_imsitu_val)
+#print 'Evaluating Ensemlbe for Imsitu Test'
+#evaluate_ensemble(baseline_imsitu_test, model1_imsitu_test)
+print 'Evaluating Ensemble for Imsitu Selection'
+evaluate_ensemble(baseline_tushar_selection, model1_imsitu_selection)
+
+
+print 'Evaluatin for Baseline Tushar and Model2...'
+print '.....'
+print 'Evaluating Ensemble for Imsitu Validation'
+evaluate_ensemble(baseline_tushar_val, model2_imsitu_val)
+#print 'Evaluating Ensemlbe for Imsitu Test'
+#evaluate_ensemble(baseline_imsitu_test, model1_imsitu_test)
+print 'Evaluating Ensemble for Imsitu Selection'
+evaluate_ensemble(baseline_tushar_selection, model2_imsitu_selection)
+
+
+print 'Evaluatin for Baseline and Model2...'
+print '.....'
+print 'Evaluating Ensemble for Imsitu Validation'
+evaluate_ensemble(baseline_imsitu_val, model2_imsitu_val)
+#print 'Evaluating Ensemlbe for Imsitu Test'
+#evaluate_ensemble(baseline_imsitu_test, model1_imsitu_test)
+print 'Evaluating Ensemble for Imsitu Selection'
+evaluate_ensemble(baseline_imsitu_selection, model2_imsitu_selection)
+
+

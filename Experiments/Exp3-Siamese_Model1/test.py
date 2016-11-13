@@ -66,6 +66,7 @@ def evaluate(net, test_path, ppmi=False, train_path=None):
 	lmdb_cursor = lmdb_txn.cursor()
 	label_list = []
 	distribution = []
+	test_results = dict()
 	for key, value in lmdb_cursor:
 		image_nm = '_'.join(key.split('_')[1:])
 		image_loc = '../../project_data/images/imsitu/' + image_nm
@@ -75,6 +76,7 @@ def evaluate(net, test_path, ppmi=False, train_path=None):
         	label = int(datum.label)
 		prediction = net.predict([image])
 		plabel = prediction[0]
+		test_results[image_nm] = (label, plabel)
 		distribution.append(plabel)
 		label_list.append(label)
 	
@@ -82,21 +84,21 @@ def evaluate(net, test_path, ppmi=False, train_path=None):
 	# display metric
 	val_banner(label_list, distribution_mat)
 	
-	return label_list, distribution_mat
+	return test_results
 	
 
 
 print 'Evaluating Imsitu validation...'
-label, prob_dist = evaluate(net, val_lmdb_path_imsitu)
-pickle.dump((label, prob_dist), open('imsitu_validation.p', 'wb'))
+test_results = evaluate(net, val_lmdb_path_imsitu)
+pickle.dump(test_results, open('imsitu_validation.p', 'wb'))
 
 print 'Evaluating Imsitu Test ....'
-label, prob_dist = evaluate(net, test_lmdb_path_imsitu)
-pickle.dump((label, prob_dist), open('imsitu_test.p', 'wb'))
+test_results = evaluate(net, test_lmdb_path_imsitu)
+pickle.dump(test_results, open('imsitu_test.p', 'wb'))
 
 print 'Evaluating Imsitu Selection ...'
-label, prob_dist = evaluate(net, test_lmdb_path_imsitu_selection)
-pickle.dump((label, prob_dist), open('imsitu_selection.p', 'wb'))
+test_results = evaluate(net, test_lmdb_path_imsitu_selection)
+pickle.dump(test_results, open('imsitu_selection.p', 'wb'))
 
 # evaluate over ppmi dataset 
 #evaluate(net, test_lmdb_path_ppmi, ppmi=True, train_path=train_lmdb_path_ppmi)
