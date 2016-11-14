@@ -3,6 +3,7 @@ import numpy as np
 from Adversarial_Network.util.nn_util import *
 from sklearn.metrics import accuracy_score
 from sklearn.svm import SVC
+import cPickle as pickle
 
 #don't worry, we'll put it back in there
 #model_dir='../../models/adversarial_object_activity'
@@ -51,12 +52,15 @@ def val_banner(truth, pred):
 	val_banner='%s\n%s\n%s'%(banner_line, val_banner, banner_line)
 	print val_banner
 
-def get_preds(inputs, labels, net):
+def get_preds(data, net):
 
-	output_preds, output_labels=[], []
-	count, n_batches=0, inputs.shape[0]/opt.batch_size
+	files, images, labels = data
 
-	for batchInputs, batchLabels in get_batches_in_sequence(inputs, labels, opt):
+	output_preds, output_labels, output_files=[], [], []
+	n_val=images.shape[0]
+	count, n_batches=0, n_val/opt.batch_size
+
+	for batchFiles, batchInputs, batchLabels in get_batches_in_sequence(data, opt):
 
 		batchLabels, _ = batchLabels # take only activity
 
@@ -70,21 +74,24 @@ def get_preds(inputs, labels, net):
 
 		output_preds.append(batchPred)
 		output_labels.append(batchLabels)
+		output_files.append(batchFiles)
 
 		if count%10==0:
 			print '%s/%s..'%(count, n_batches)
 		count+=1
 
-	output_preds=np.vstack(output_preds)
-	output_labels=np.hstack(output_labels)	
-	return output_preds, output_labels 
+	output_preds=np.vstack(output_preds)[:n_val]
+	output_labels=np.hstack(output_labels)[:n_val]
+	output_files=np.hstack(output_files)[:n_val]
+	return output_files, output_preds, output_labels
 
 
 def torch_net():
 
 	import PyTorchHelpers
 	opt.load=opt.t7 #so that TorchTrainer can load
-	TorchTrainer = PyTorchHelpers.load_lua_class('%s/AdversaryTrainer.lua'%model_dir, 'AdversaryTrainer')
+	#TorchTrainer = PyTorchHelpers.load_lua_class('%s/AdversaryTrainer.lua'%model_dir, 'AdversaryTrainer')
+	TorchTrainer = PyTorchHelpers.load_lua_class('%s/CosineTrainer.lua'%model_dir, 'CosineTrainer')		
 	net = TorchTrainer(vars(opt))
 	return net
 
@@ -102,16 +109,18 @@ def caffe_net():
 
 def eval_data(net):
 	
-	val_pred, val_labs = get_preds(val_images, val_labels, net)
+	val_files, val_pred, val_labs = get_preds(val_data, net)
 	print 'predictions generated'
 	
+	print val_pred.shape
+
 	val_banner(val_labs, val_pred)
 
 
 #----------------------------------------------------------------#
-train_images, train_labels, val_images, val_labels, img_mean = load_data(opt.data_dir)
+_, val_data, img_mean = load_imsitu(opt.data_dir)
 opt.img_mean=img_mean
-
+opt.eval=1 #to get filenames as well
 
 if opt.t7!='nil':
 	opt.backend='torch'

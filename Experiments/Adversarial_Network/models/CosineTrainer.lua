@@ -39,7 +39,7 @@ function CosineTrainer:__init(params)
 
 	self.crit= nn.ParallelCriterion()
 			:add(nn.ClassNLLCriterion(), 1)
-			:add(nn.CosineEmbeddingCriterion(0.5), 0)
+			:add(nn.CosineEmbeddingCriterion(0.5), 1000)
 
 	self.model:cuda()
 	self.crit:cuda()
@@ -80,7 +80,7 @@ function CosineTrainer:trainBatch(batchInputs, batchLabels, base_lr, base_wd)
 	-- calculate loss normally
 	local loss_val = self.crit:forward({y[1], {y[2], y[3]}}, {batchLabels, cos_labels})
 	local nll_loss= self.crit.criterions[1].output
-	local cos_loss= self.crit.criterions[2].output*20
+	local cos_loss= self.crit.criterions[2].output*self.crit.weights[2]
 
 	local df_dw = self.crit:backward({y[1], {y[2], y[3]}}, {batchLabels, cos_labels})
 	self.model:backward(batchInputs, {df_dw[1], unpack(df_dw[2])})
@@ -96,15 +96,14 @@ end
 function CosineTrainer:predict(input, target)
 	self.model:evaluate()
 
-
-	input, target= cudafy(input), cudafy(target)
-	target=target[1] -- ditch object labels
-
+	input= cudafy(input)
 	local output = self.model:forward(input)
-	local cos_labels=torch.zeros(target:size(1)):fill(-1):cuda() --make everything go far away
 
 	local loss=-1
 	if target~=nil then
+		taget= cudafy(target)	
+		target=target[1] -- ditch object labels
+		local cos_labels=torch.zeros(target:size(1)):fill(-1):cuda() --make everything go far away
 		loss= self.crit:forward({output[1], {output[2], output[3]}}, {target, cos_labels})
 	end
 	

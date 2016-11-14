@@ -94,15 +94,17 @@ def val_banner(truth, pred, epoch, val_loss):
 
 
 def epochToLearningRate(epoch):
-   if epoch < 100:
-	  return opt.base_lr
-   if epoch < 200:
-	  return opt.base_lr/10.0
-   return opt.base_lr/100.0
+	if epoch < 100:
+		return opt.base_lr
+	if epoch < 200:
+		return opt.base_lr/10.0
+	return opt.base_lr/100.0
 
 
 #----------------------------------------------------------------#
-train_images, train_labels, val_images, val_labels, img_mean = load_data(opt.data_dir)
+train_data, val_data, img_mean= load_imsitu(opt.data_dir)
+_, train_images, train_labels= train_data
+_, val_images, val_labels= val_data
 opt.img_mean=img_mean
 
 TorchTrainer = PyTorchHelpers.load_lua_class('%s/CosineTrainer.lua'%model_dir, 'CosineTrainer')
@@ -149,7 +151,7 @@ while True:
 			print 'model saved'
 
 
-	learningRate = epochToLearningRate(epoch)
+	learningRate = opt.base_lr #epochToLearningRate(epoch)
 	epochLoss = 0
 	for b in range(n_train_batches):
 

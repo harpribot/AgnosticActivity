@@ -99,11 +99,12 @@ def epochToLearningRate(epoch):
 
 
 #----------------------------------------------------------------#
-train_images, train_labels, val_images, val_labels, img_mean = load_data(opt.data_dir)
+train_data, val_data, img_mean= load_imsitu(opt.data_dir)
+_, train_images, train_labels= train_data
+_, val_images, val_labels= val_data
 opt.img_mean=img_mean
 
 TorchTrainer = PyTorchHelpers.load_lua_class('%s/AdversaryTrainer.lua'%model_dir, 'AdversaryTrainer')
-#TorchTrainer = PyTorchHelpers.load_lua_class('%s/CosineTrainer.lua'%model_dir, 'CosineTrainer')
 net = TorchTrainer(vars(opt))
 
 n_train, n_val= train_images.shape[0], val_images.shape[0]
@@ -123,7 +124,7 @@ while True:
 		val_truth, val_pred=[], []
 		val_loss=0.0
 		count=0
-		for batchInputs, batchLabels in get_batches_in_sequence(val_images, val_labels, opt):
+		for batchInputs, batchLabels in get_batches_in_sequence(val_data, opt):
 
 			batchPred = net.predict(batchInputs, batchLabels)
 			batchPred, loss= batchPred[1], batchPred[2]
@@ -154,7 +155,7 @@ while True:
 	epochLoss = 0
 	for b in range(n_train_batches):
 
-		batchInputs, batchLabels=get_random_batch(train_images, train_labels, opt)
+		batchInputs, batchLabels=get_random_batch(train_data, opt)
 		loss = net.trainBatch(batchInputs, batchLabels, learningRate)
 		if b%opt.print_every==0:
 			print('  epoch: %d | batch: %d/%d | loss: %.6f' %(epoch, b, n_train_batches, loss))

@@ -39,15 +39,31 @@ def write_hdf5(data, out_file):
 
 #----------------------------------------------------------------#
 
-filenames=glob.glob('ppmi/*_instrument/*/*/*.jpg')
+filenames=glob.glob('/work/04340/tushar_n/VR2/data/ppmi/*_instrument/*/*/*.jpg')
 imgs=parallelize(read_img, filenames, 10)
 labels=parallelize(label_objects, filenames)
 data=zip(filenames, imgs, labels)
 
 train_data=[d for d in data if '/train/' in d[0]]
 test_data=[d for d in data if '/test/' in d[0]]
+
+train_data=sk_shuffle(train_data) #shuffle only train
+
+print len(train_data), len(test_data)
+with open('train_ppmi.txt','w') as f:
+	for fl, _, lab in train_data:
+		fl_tail=fl.split('/work/04340/tushar_n/VR2/data/ppmi/')[1]
+		f.write('%s %d\n'%(fl_tail, lab))
+
+with open('test_ppmi.txt','w') as f:
+	for fl, _, lab in test_data:
+		fl_tail=fl.split('/work/04340/tushar_n/VR2/data/ppmi/')[1]
+		f.write('%s %d\n'%(fl_tail, lab))
+
+'''
 train_data=sk_shuffle(train_data) #shuffle only train
 img_mean=pickle.load(open('imagenet_mean.pkl','rb'))
 
 write_hdf5(train_data, 'hdf5/ppmi/train_data.h5')
 write_hdf5(test_data, 'hdf5/ppmi/test_data.h5')
+'''

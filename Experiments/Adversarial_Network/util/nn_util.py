@@ -11,16 +11,20 @@ def delete_file(filename):
 #--------------------------Data Loader--------------------------------#
 
 #imsitu data
-def load_data(data_dir):
+def load_imsitu(data_dir):
 	train_data=h5py.File('%s/train_data.h5'%data_dir)
 	val_data=h5py.File('%s/val_data.h5'%data_dir)
+
 	img_mean= np.array(train_data['img_mean'])
 
+	train_imgs, val_imgs=train_data['images'], val_data['images']
+	train_files, val_files=train_data['image_files'], val_data['image_files']
 	train_labels=(train_data['act_labels'], train_data['obj_labels'])
 	val_labels=(val_data['act_labels'], val_data['obj_labels'])
 
-	return train_data['images'], train_labels,\
-			val_data['images'], val_labels, img_mean
+	return [train_files, train_imgs, train_labels],\
+			[val_files, val_imgs, val_labels],\
+			img_mean
 
 #ppmi data
 def load_ppmi(data_dir):
@@ -34,9 +38,13 @@ def load_ppmi(data_dir):
 #agnostic imsitu subset
 def load_subset(data_dir):
 	val_data=h5py.File('%s/subset_data.h5'%data_dir)
+
+	val_imgs=val_data['images']
+	val_files=val_data['image_files']
 	val_labels=(val_data['act_labels'], val_data['obj_labels'])
 	img_mean= np.array(val_data['img_mean'])
-	return val_data['images'], val_labels, img_mean
+
+	return [val_files, val_imgs, val_labels], img_mean
 
 
 
@@ -70,12 +78,14 @@ def vectorize_labels(labels, num_classes=1000, crit='BCE'):
 	return None
 
 
-def get_random_batch(data, labels, opt):
+def get_random_batch(data, opt):
+
+	_, images, labels= data
 
 	act_labels, obj_labels= labels
-	rand_idx=np.random.choice(data.shape[0], opt.batch_size, replace=False)
+	rand_idx=np.random.choice(images.shape[0], opt.batch_size, replace=False)
 	rand_idx=sorted(rand_idx) #h5py is weird
-	batch_data= np.subtract(data[rand_idx], opt.img_mean)	
+	batch_data= np.subtract(images[rand_idx], opt.img_mean)	
 	batch_data= center_crop(batch_data)
 
 	act_lab_vec=act_labels[rand_idx]+1
@@ -84,20 +94,38 @@ def get_random_batch(data, labels, opt):
 
 	return 1.0*batch_data, batch_labels
 
-def get_batches_in_sequence(data, labels, opt):
+def get_batches_in_sequence(data, opt):
 	
+	files, images, labels= data
 	act_labels, obj_labels= labels
 
-	for i in xrange(data.shape[0]/opt.batch_size):
+	#if required, pad with zeros
+	if opt.eval==1:
+		n_pad=opt.batch_size-images.shape[0]%opt.batch_size
+		if n_pad>0:
+			pad=np.zeros((n_pad, images.shape[1], images.shape[2], images.shape[3]))
+			images=np.vstack([images, pad])
+			act_labels=np.hstack([act_labels, np.zeros(n_pad)])
+			obj_labels=np.vstack([obj_labels, np.zeros((n_pad, obj_labels.shape[1]))])
+			files=np.hstack([files, np.zeros(n_pad)])
+
+	for i in xrange(images.shape[0]/opt.batch_size):
 		st, end= opt.batch_size*i, opt.batch_size*i + opt.batch_size
-		batch_data= np.subtract(data[st:end], opt.img_mean)
+		batch_data= np.subtract(images[st:end], opt.img_mean)
 		batch_data= center_crop(batch_data)
 
 		act_lab_vec= act_labels[st:end]+1
 		obj_lab_vec= vectorize_labels(obj_labels[st:end])
 		batch_labels=[1.0*act_lab_vec, 1.0*obj_lab_vec]
+		
+		if opt.eval!=1:
+			yield 1.0*batch_data, batch_labels
 
-		yield 1.0*batch_data, batch_labels
+		else:
+			batch_files= files[st:end]
+			yield batch_files, 1.0*batch_data, batch_labels
+
+
 
 #-----------------------------------------------------------------#
 #ppmi, only val

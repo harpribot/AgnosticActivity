@@ -8,6 +8,9 @@ from joblib import Parallel, delayed
 import os.path
 
 #------------------------------util------------------------------#
+def remove_idx(L, null_idx):
+	return [v for i, v in enumerate(L) if i not in null_idx]
+
 def read_lines(flname):
 	with open(flname,'r') as f:
 		return f.read().strip().split('\n')
@@ -51,21 +54,24 @@ def make_hdf5(filenames, out_file, train=False, shuffle=True):
 
 	# remove junk images (and corresponding labels)	
 	junk_idx=set([i for i in range(len(imgs)) if imgs[i] is None])
-	imgs = [v for i, v in enumerate(imgs) if i not in junk_idx]
-	act_labels=[v for i, v in enumerate(act_labels) if i not in junk_idx]
-	obj_labels=[v for i, v in enumerate(obj_labels) if i not in junk_idx]
+	imgs = remove_idx(imgs, junk_idx)
+	img_files = remove_idx(filenames, junk_idx)
+	act_labels= remove_idx(act_labels, junk_idx)
+	obj_labels= remove_idx(obj_labels, junk_idx)
 
 
 	if shuffle:
-		imgs, act_labels, obj_labels=sk_shuffle(imgs, act_labels, obj_labels)
+		imgs, img_files, act_labels, obj_labels=sk_shuffle(imgs, img_files, act_labels, obj_labels)
 
 	img_data=np.asanyarray(imgs)
 	act_labels=np.array(act_labels)
 	obj_labels=np.array(obj_labels)
+	img_files=np.array(img_files)
 
 	print img_data.shape
 
 	with h5py.File(out_file, 'w') as hf:
+		hf.create_dataset('image_files', data=img_files)
 		hf.create_dataset('images', data=img_data)
 		hf.create_dataset('obj_labels', data=obj_labels)
 		hf.create_dataset('act_labels', data=act_labels)
@@ -87,8 +93,8 @@ with open('../imsitu/metadata/class_dict.txt','r') as f:
 	class_dict=[d.split('\t') for d in class_dict]
 	class_dict=dict([[d[0], int(d[1])] for d in class_dict])
 
-img_mean=pickle.load(open('../imagenet_mean.pkl','rb'))
-make_hdf5(subset_files, '../hdf5/imsitu_subset/subset_data.h5', True)
+img_mean=pickle.load(open('imagenet_mean.pkl','rb'))
+make_hdf5(subset_files, 'imsitu_subset/subset_data.h5', True)
 
 
 

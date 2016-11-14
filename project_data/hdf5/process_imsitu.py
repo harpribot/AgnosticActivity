@@ -8,6 +8,9 @@ from joblib import Parallel, delayed
 import os.path
 
 #------------------------------util------------------------------#
+def remove_idx(L, null_idx):
+	return [v for i, v in enumerate(L) if i not in null_idx]
+
 def read_lines(flname):
 	with open(flname,'r') as f:
 		return f.read().strip().split('\n')
@@ -29,7 +32,7 @@ def label_actions(fl):
 	return class_dict[fl.split('_')[0]]
 
 
-obj_labels=pickle.load(open('imsitu/obj_labels.pkl','rb'))
+obj_labels=pickle.load(open('../imsitu/metadata/obj_labels.pkl','rb'))
 def label_objects(fl): #max 30 labels? :\
 	label_vec=np.zeros(30)-1
 	label_set=obj_labels[fl]
@@ -46,19 +49,21 @@ def make_hdf5(filenames, out_file, train=False, shuffle=True):
 
 	# remove junk images (and corresponding labels)	
 	junk_idx=set([i for i in range(len(imgs)) if imgs[i] is None])
-	imgs = [v for i, v in enumerate(imgs) if i not in junk_idx]
-	act_labels=[v for i, v in enumerate(act_labels) if i not in junk_idx]
-	obj_labels=[v for i, v in enumerate(obj_labels) if i not in junk_idx]
-
+	imgs = remove_idx(imgs, junk_idx)
+	img_files = remove_idx(filenames, junk_idx)
+	act_labels= remove_idx(act_labels, junk_idx)
+	obj_labels= remove_idx(obj_labels, junk_idx)
 
 	if shuffle:
-		imgs, act_labels, obj_labels=sk_shuffle(imgs, act_labels, obj_labels)
+		imgs, img_files, act_labels, obj_labels=sk_shuffle(imgs, img_files, act_labels, obj_labels)
 
 	img_data=np.asanyarray(imgs)
 	act_labels=np.array(act_labels)
 	obj_labels=np.array(obj_labels)
+	img_files=np.array(img_files)
 
 	with h5py.File(out_file, 'w') as hf:
+		hf.create_dataset('image_files', data=img_files)
 		hf.create_dataset('images', data=img_data)
 		hf.create_dataset('obj_labels', data=obj_labels)
 		hf.create_dataset('act_labels', data=act_labels)
@@ -71,7 +76,6 @@ def make_hdf5(filenames, out_file, train=False, shuffle=True):
 
 
 #--------------------------------------------------------------------#
-
 
 mean_file='../models/pretrained/imagenet_mean.binaryproto'
 if not os.path.isfile('imagenet_mean.pkl'):
@@ -89,23 +93,23 @@ if not os.path.isfile('imagenet_mean.pkl'):
 	pickle.dump(mean_val, open('imagenet_mean.pkl','wb')) #(3,256,256)
 	print 'imagenet mean np file generated'
 
-img_dir='imsitu/of500_images_resized/'
-train_files=read_lines('imsitu/train.txt')
-val_files=read_lines('imsitu/dev.txt')
-test_files=read_lines('imsitu/test.txt')
+img_dir='../imsitu/of500_images_resized/'
+train_files=read_lines('../imsitu/metadata/train.txt')
+val_files=read_lines('../imsitu/metadata/dev.txt')
+test_files=read_lines('../imsitu/metadata/test.txt')
 
 class_dict=list(set([fl.split('_')[0] for fl in train_files+val_files+test_files]))
 class_dict=sorted(class_dict)
 class_dict={cl:idx for idx, cl in enumerate(class_dict)}
-with open('imsitu/class_dict.txt','w') as f:
+with open('../imsitu/metadata/class_dict.txt','w') as f:
 	for cl, idx in sorted(class_dict.items(), key=lambda x: x[1]):
 		f.write('%s\t%d\n'%(cl, idx))
 print len(class_dict)
 
 img_mean=pickle.load(open('imagenet_mean.pkl','rb'))
-make_hdf5(train_files, 'hdf5/imsitu/train_data.h5', True)
-make_hdf5(val_files, 'hdf5/imsitu/val_data.h5', False)
-make_hdf5(test_files, 'hdf5/imsitu/test_data.h5', False)
+make_hdf5(train_files, 'imsitu/train_data.h5', True)
+make_hdf5(val_files, 'imsitu/val_data.h5', False)
+make_hdf5(test_files, 'imsitu/test_data.h5', False)
 
 
 
