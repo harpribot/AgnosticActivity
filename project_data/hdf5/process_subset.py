@@ -37,7 +37,7 @@ def label_actions(fl):
 	return class_dict[fl.split('_')[0]]
 
 
-obj_labels=pickle.load(open('../imsitu/metadata/obj_labels.pkl','rb'))
+obj_labels=pickle.load(open('imsitu/obj_labels.pkl','rb'))
 def label_objects(fl): #max 30 labels? :\
 	label_vec=np.zeros(30)-1
 	label_set=obj_labels[fl]
@@ -48,7 +48,7 @@ def label_objects(fl): #max 30 labels? :\
 
 def make_hdf5(filenames, out_file, train=False, shuffle=True):
 
-	imgs=parallelize(read_img, filenames, 10)
+	imgs=parallelize(read_img, filenames, 2)
 	act_labels=parallelize(label_actions, filenames)
 	obj_labels=parallelize(label_objects, filenames)
 
@@ -84,11 +84,11 @@ def make_hdf5(filenames, out_file, train=False, shuffle=True):
 
 
 #--------------------------------------------------------------------#
-img_dir='../imsitu/of500_images_resized/'
-subset_files=read_lines('../imsitu_subset/imsitu_subset.txt')
+img_dir='../images/imsitu/of500_images_resized/'
+subset_files=read_lines('imsitu_subset/imsitu_subset.txt')
 print len(subset_files)
 
-with open('../imsitu/metadata/class_dict.txt','r') as f:
+with open('imsitu/class_dict.txt','r') as f:
 	class_dict=f.read().strip().split('\n')
 	class_dict=[d.split('\t') for d in class_dict]
 	class_dict=dict([[d[0], int(d[1])] for d in class_dict])

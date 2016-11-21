@@ -30,40 +30,43 @@ def label_objects(fl):
 	return -1
 	
 def write_hdf5(data, out_file):
+
+	img_files, img_data, labels=zip(*data)
+	img_files, img_data, labels=np.array(img_files), np.asanyarray(img_data), np.array(labels)
+
 	with h5py.File(out_file, 'w') as hf:
-		_, img_data, labels=zip(*data)
-		img_data, labels=np.asanyarray(img_data), np.array(labels)
+		hf.create_dataset('image_files', data=img_files)
 		hf.create_dataset('images', data=img_data)
 		hf.create_dataset('labels', data=labels)
 		hf.create_dataset('img_mean', data=img_mean)
 
 #----------------------------------------------------------------#
+img_dir='../images/ppmi'
+filenames=glob.glob('%s/*_instrument/*/*/*.jpg'%img_dir)
 
-filenames=glob.glob('/work/04340/tushar_n/VR2/data/ppmi/*_instrument/*/*/*.jpg')
-imgs=parallelize(read_img, filenames, 10)
+imgs=parallelize(read_img, filenames, 2)
 labels=parallelize(label_objects, filenames)
+filenames=[fl.split(img_dir)[1] for fl in filenames]
 data=zip(filenames, imgs, labels)
 
-train_data=[d for d in data if '/train/' in d[0]]
-test_data=[d for d in data if '/test/' in d[0]]
+train_data=[d for d in data if 'train/' in d[0]]
+test_data=[d for d in data if 'test/' in d[0]]
 
 train_data=sk_shuffle(train_data) #shuffle only train
 
-print len(train_data), len(test_data)
-with open('train_ppmi.txt','w') as f:
+print 'size:', len(train_data), len(test_data)
+with open('ppmi/train_ppmi.txt','w') as f:
 	for fl, _, lab in train_data:
-		fl_tail=fl.split('/work/04340/tushar_n/VR2/data/ppmi/')[1]
-		f.write('%s %d\n'%(fl_tail, lab))
+		f.write('%s %d\n'%(fl, lab))
 
-with open('test_ppmi.txt','w') as f:
+with open('ppmi/test_ppmi.txt','w') as f:
 	for fl, _, lab in test_data:
-		fl_tail=fl.split('/work/04340/tushar_n/VR2/data/ppmi/')[1]
-		f.write('%s %d\n'%(fl_tail, lab))
+		f.write('%s %d\n'%(fl, lab))
 
-'''
+
 train_data=sk_shuffle(train_data) #shuffle only train
 img_mean=pickle.load(open('imagenet_mean.pkl','rb'))
 
-write_hdf5(train_data, 'hdf5/ppmi/train_data.h5')
-write_hdf5(test_data, 'hdf5/ppmi/test_data.h5')
-'''
+write_hdf5(train_data, 'ppmi/train_data.h5')
+write_hdf5(test_data, 'ppmi/test_data.h5')
+

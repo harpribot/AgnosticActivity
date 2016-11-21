@@ -32,7 +32,7 @@ def label_actions(fl):
 	return class_dict[fl.split('_')[0]]
 
 
-obj_labels=pickle.load(open('../imsitu/metadata/obj_labels.pkl','rb'))
+obj_labels=pickle.load(open('imsitu/obj_labels.pkl','rb'))
 def label_objects(fl): #max 30 labels? :\
 	label_vec=np.zeros(30)-1
 	label_set=obj_labels[fl]
@@ -43,7 +43,7 @@ def label_objects(fl): #max 30 labels? :\
 
 def make_hdf5(filenames, out_file, train=False, shuffle=True):
 
-	imgs=parallelize(read_img, filenames, 10)
+	imgs=parallelize(read_img, filenames, 2)
 	act_labels=parallelize(label_actions, filenames)
 	obj_labels=parallelize(label_objects, filenames)
 
@@ -77,31 +77,31 @@ def make_hdf5(filenames, out_file, train=False, shuffle=True):
 
 #--------------------------------------------------------------------#
 
-mean_file='../models/pretrained/imagenet_mean.binaryproto'
-if not os.path.isfile('imagenet_mean.pkl'):
+#mean_file='../models/pretrained/imagenet_mean.binaryproto'
+#if not os.path.isfile('imagenet_mean.pkl'):
 
-	import sys
-	sys.path.append('/work/04340/tushar_n/packages/caffe/python')
-	import caffe
-	caffe.set_device(0)
-	
-	blob = caffe.proto.caffe_pb2.BlobProto()
-	data = open(mean_file,'rb').read()
-	blob.ParseFromString(data)
-	mean_val = np.array(caffe.io.blobproto_to_array(blob))[0] #BGR
-	mean_val = mean_val[::-1,:,:] #RGB
-	pickle.dump(mean_val, open('imagenet_mean.pkl','wb')) #(3,256,256)
-	print 'imagenet mean np file generated'
+#	import sys
+#	sys.path.append('/work/04340/tushar_n/packages/caffe/python')
+#	import caffe
+#	caffe.set_device(0)
+#	
+#	blob = caffe.proto.caffe_pb2.BlobProto()
+#	data = open(mean_file,'rb').read()
+#	blob.ParseFromString(data)
+#	mean_val = np.array(caffe.io.blobproto_to_array(blob))[0] #BGR
+#	mean_val = mean_val[::-1,:,:] #RGB
+#	pickle.dump(mean_val, open('imagenet_mean.pkl','wb')) #(3,256,256)
+#	print 'imagenet mean np file generated'
 
-img_dir='../imsitu/of500_images_resized/'
-train_files=read_lines('../imsitu/metadata/train.txt')
-val_files=read_lines('../imsitu/metadata/dev.txt')
-test_files=read_lines('../imsitu/metadata/test.txt')
+img_dir='../images/imsitu/of500_images_resized/'
+train_files=read_lines('imsitu/train.txt')
+val_files=read_lines('imsitu/dev.txt')
+test_files=read_lines('imsitu/test.txt')
 
 class_dict=list(set([fl.split('_')[0] for fl in train_files+val_files+test_files]))
 class_dict=sorted(class_dict)
 class_dict={cl:idx for idx, cl in enumerate(class_dict)}
-with open('../imsitu/metadata/class_dict.txt','w') as f:
+with open('imsitu/class_dict.txt','w') as f:
 	for cl, idx in sorted(class_dict.items(), key=lambda x: x[1]):
 		f.write('%s\t%d\n'%(cl, idx))
 print len(class_dict)
