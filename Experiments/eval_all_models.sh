@@ -11,3 +11,8 @@ python eval_torch_models.py --load cv/cosine/cosine_on_20/ep_27_loss_3.926786.t7
 cd ..
 
 # evaluate all caffe models
+cd Exp2-Baseline
+python test.py snapshots/caffe_alexnet_train_iter_3000.caffemodel # pickles are stored in the Exp2-Baseline
+
+cd ../Exp3-Siamese_Model1/
+python test.py snapshots/caffe_alexnet_train_iter_3000.caffemodel # pickles are stored in the Exp3-Siamese_Model1
