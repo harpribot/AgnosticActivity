@@ -5,7 +5,7 @@ require 'paths'
 
 function load_alexnet()
 
-	local pretrain_dir='../../models/pretrained/'
+	local pretrain_dir='../../models/torch_models/'
 
 	local caffe_t7=pretrain_dir..'bvlc_reference_caffenet.t7'
 	if paths.filep(caffe_t7) then
