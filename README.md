@@ -2,6 +2,9 @@
 
 The project involves separating the object recognition task from activity recognition, so that, the activity recognition is agnostic to the objects that are involves, and thus improves learning when the dataset is heavily skewed towards certain objects performing certain activities, which wont lead to better generalization if different objects are performing the same activity.
 
+![Models](https://github.com/harpribot/AgnosticActivity/tree/master/models/models.png "Top: Original Model, Bottom 2: Proposed Models")
+
+
 # Requirements
 ## Building Caffe-sl
 Follow the following steps:
@@ -29,5 +32,3 @@ All the experiment scripts should be in Experiments directory and should call th
 
 ## Utilities
 There are some utility scripts that we can use. It is not properly strucutred. As the project is in progress
-
-
