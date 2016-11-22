@@ -2,8 +2,18 @@
 
 The project involves separating the object recognition task from activity recognition, so that, the activity recognition is agnostic to the objects that are involves, and thus improves learning when the dataset is heavily skewed towards certain objects performing certain activities, which wont lead to better generalization if different objects are performing the same activity.
 
-![Models](https://github.com/harpribot/AgnosticActivity/tree/master/models/models.png "Top: Original Model, Bottom 2: Proposed Models")
+# Motivation
+**Intra Activity Skewness**
+![Intra-im](/Exp1-VizualizeSkewness/vizualisation/intra-activity.png)
+![Intra-plot](/Exp1-VizualizeSkewness/vizualisation/intra-plot.png)
 
+**Inter Activity Skewness**
+![Inter-implot](/Exp1-VizualizeSkewness/vizualisation/inter-activity.png)
+
+# Models
+![Models](/models/models.png "Top: Original Model, Bottom 2: Proposed Models")
+
+All the models are in the models directory
 
 # Requirements
 ## Building Caffe-sl
@@ -19,10 +29,6 @@ Thats it. Note that this caffe-sl version is stripped off of unwanted files in t
 * Install [PyTorch](https://github.com/hughperkins/pytorch)
 * Requires torch packages: `luarocks install nnlr cudnn rnn` to install.
 * Requires python packages: `pip install h5py numpy scikit-learn` to install
-
-
-## Models
-All the models are in the models directory.
 
 ## Project data
 All the data is to be kept in the project-data directory and queried from there.
