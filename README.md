@@ -4,11 +4,11 @@ The project involves separating the object recognition task from activity recogn
 
 # Motivation
 **Intra Activity Skewness**
-![Intra-im](/Exp1-VizualizeSkewness/vizualisation/intra-activity.png)
-![Intra-plot](/Exp1-VizualizeSkewness/vizualisation/intra-plot.png)
+![Intra-im](/Experiments/Exp1-VizualizeSkewness/vizualisation/intra-activity.png)
+![Intra-plot](/Experiments/Exp1-VizualizeSkewness/vizualisation/intra-plot.png)
 
 **Inter Activity Skewness**
-![Inter-implot](/Exp1-VizualizeSkewness/vizualisation/inter-activity.png)
+![Inter-implot](/Experiments/Exp1-VizualizeSkewness/vizualisation/inter-activity.png)
 
 # Models
 ![Models](/models/models.png "Top: Original Model, Bottom 2: Proposed Models")
