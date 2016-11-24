@@ -1,2 +1,3 @@
 *.prototxt linguist-language=C++
+*.md linguist-language=Python
 caffe-sl/* linguist-documentation=false
