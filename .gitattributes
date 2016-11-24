@@ -1,1 +1,2 @@
 *.prototxt linguist-language=C++
+caffe-sl/* linguist-documentation=false
